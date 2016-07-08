@@ -38,7 +38,7 @@ type DBConfig struct {
 // * postgres
 // * sqlite3
 func DBInit(dbConfig *DBConfig) (*gorm.DB, error) {
-	var DB gorm.DB
+	var DB *gorm.DB
 	var err error
 	switch dbConfig.DbType {
 	case "postgres":
@@ -67,7 +67,7 @@ func DBInit(dbConfig *DBConfig) (*gorm.DB, error) {
 		log.Println("Unable to verify connection to database")
 		return nil, err
 	}
-	return &DB, nil
+	return DB, nil
 }
 
 // InternalDBInit initializes the internal database connection that the service broker will use.

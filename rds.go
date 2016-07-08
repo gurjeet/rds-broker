@@ -4,6 +4,7 @@ import (
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/awserr"
 	"github.com/aws/aws-sdk-go/aws/awsutil"
+	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/rds"
 	"github.com/jinzhu/gorm"
 
@@ -123,7 +124,8 @@ type DedicatedDBAdapter struct {
 }
 
 func (d *DedicatedDBAdapter) CreateDB(i *Instance, password string) (DBInstanceState, error) {
-	svc := rds.New(&aws.Config{Region: i.AwsRegion})
+	sess := session.New(&aws.Config{Region: &i.AwsRegion})
+	svc := rds.New(sess)
 
 	var rdsTags []*rds.Tag
 
@@ -147,17 +149,17 @@ func (d *DedicatedDBAdapter) CreateDB(i *Instance, password string) (DBInstanceS
 		Engine:                  aws.String("postgres"),
 		MasterUserPassword:      &password,
 		MasterUsername:          &i.Username,
-		AutoMinorVersionUpgrade: aws.Boolean(true),
-		MultiAZ:                 aws.Boolean(i.MultiAz),
-		StorageEncrypted:        aws.Boolean(true),
+		AutoMinorVersionUpgrade: aws.Bool(true),
+		MultiAZ:                 aws.Bool(i.MultiAz),
+		StorageEncrypted:        aws.Bool(true),
 		Tags:                    rdsTags,
-		PubliclyAccessible:      aws.Boolean(false),
+		PubliclyAccessible:      aws.Bool(false),
 		DBSubnetGroupName:       &i.DbSubnetGroup,
-		VPCSecurityGroupIDs:     []*string{&i.SecGroup},
+		VpcSecurityGroupIds:     []*string{&i.SecGroup},
 	}
 
 	if *params.DBInstanceClass == "db.t2.micro" {
-		params.StorageEncrypted = aws.Boolean(false)
+		params.StorageEncrypted = aws.Bool(false)
 	}
 
 	resp, err := svc.CreateDBInstance(params)
@@ -172,7 +174,8 @@ func (d *DedicatedDBAdapter) CreateDB(i *Instance, password string) (DBInstanceS
 }
 
 func (d *DedicatedDBAdapter) GetDBStatus(i *Instance) (InstanceStatus, error) {
-	svc := rds.New(&aws.Config{Region: i.AwsRegion})
+	sess := session.New(&aws.Config{Region: &i.AwsRegion})
+	svc := rds.New(sess)
 	request := &rds.DescribeDBInstancesInput{
 		DBInstanceIdentifier: &i.Database,
 	}
@@ -201,7 +204,8 @@ func (d *DedicatedDBAdapter) BindDBToApp(i *Instance, password string) (map[stri
 	// First, we need to check if the instance is up and available before binding.
 	// Only search for details if the instance was not indicated as ready.
 	if i.State != InstanceReady {
-		svc := rds.New(&aws.Config{Region: i.AwsRegion})
+		sess := session.New(&aws.Config{Region: &i.AwsRegion})
+		svc := rds.New(sess)
 		params := &rds.DescribeDBInstancesInput{
 			DBInstanceIdentifier: aws.String(i.Database),
 			// MaxRecords: aws.Long(1),
@@ -259,11 +263,12 @@ func (d *DedicatedDBAdapter) BindDBToApp(i *Instance, password string) (map[stri
 }
 
 func (d *DedicatedDBAdapter) DeleteDB(i *Instance) (DBInstanceState, error) {
-	svc := rds.New(&aws.Config{Region: i.AwsRegion})
+	sess := session.New(&aws.Config{Region: &i.AwsRegion})
+	svc := rds.New(sess)
 	params := &rds.DeleteDBInstanceInput{
 		DBInstanceIdentifier: aws.String(i.Database), // Required
 		// FinalDBSnapshotIdentifier: aws.String("String"),
-		SkipFinalSnapshot: aws.Boolean(true),
+		SkipFinalSnapshot: aws.Bool(true),
 	}
 	resp, err := svc.DeleteDBInstance(params)
 	// Pretty-print the response data.
